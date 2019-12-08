@@ -15,6 +15,7 @@ class TailwindCssPreset extends Preset
         static::updateStyles();
         static::updateBootstrapping();
         static::updateWelcomePage();
+        static::updatePagination();
         static::removeNodeModules();
     }
 
@@ -26,36 +27,56 @@ class TailwindCssPreset extends Preset
 
     protected static function updatePackageArray(array $packages)
     {
-        return [
-            'tailwindcss' => '^0.4.0',
-        ] + Arr::except($packages, ['bootstrap-sass', 'jquery']);
+        return array_merge([
+            'laravel-mix' => '^4.0.14',
+            'laravel-mix-purgecss' => '^4.1',
+            'laravel-mix-tailwind' => '^0.1.0',
+            'tailwindcss' => '^1.0',
+        ], Arr::except($packages, [
+            'bootstrap',
+            'bootstrap-sass',
+            'popper.js',
+            'laravel-mix',
+            'jquery',
+        ]));
     }
 
     protected static function updateStyles()
     {
-        (new Filesystem)->deleteDirectory(resource_path('assets/sass'));
-        (new Filesystem)->delete(public_path('js/app.js'));
-        (new Filesystem)->delete(public_path('css/app.css'));
+        tap(new Filesystem, function ($filesystem) {
+            $filesystem->deleteDirectory(resource_path('sass'));
+            $filesystem->delete(public_path('js/app.js'));
+            $filesystem->delete(public_path('css/app.css'));
 
-        if (! file_exists(resource_path('assets/css'))) {
-            mkdir(resource_path('assets/css'));
-        }
+            if (! $filesystem->isDirectory($directory = resource_path('css'))) {
+                $filesystem->makeDirectory($directory, 0755, true);
+            }
+        });
 
-        copy(__DIR__.'/tailwindcss-stubs/resources/assets/css/main.css', resource_path('assets/css/main.css'));
+        copy(__DIR__.'/tailwindcss-stubs/resources/css/app.css', resource_path('css/app.css'));
     }
 
     protected static function updateBootstrapping()
     {
-        copy(__DIR__.'/tailwindcss-stubs/tailwind.js', base_path('tailwind.js'));
+        copy(__DIR__.'/tailwindcss-stubs/tailwind.config.js', base_path('tailwind.config.js'));
+
         copy(__DIR__.'/tailwindcss-stubs/webpack.mix.js', base_path('webpack.mix.js'));
-        copy(__DIR__.'/tailwindcss-stubs/bootstrap.js', resource_path('assets/js/bootstrap.js'));
+
+        copy(__DIR__.'/tailwindcss-stubs/resources/js/bootstrap.js', resource_path('js/bootstrap.js'));
     }
 
     protected static function updateWelcomePage()
     {
         (new Filesystem)->delete(resource_path('views/welcome.blade.php'));
 
-        copy(__DIR__.'/tailwindcss-stubs/views/welcome.blade.php', resource_path('views/welcome.blade.php'));
+        copy(__DIR__.'/tailwindcss-stubs/resources/views/welcome.blade.php', resource_path('views/welcome.blade.php'));
+    }
+
+    protected static function updatePagination()
+    {
+        (new Filesystem)->delete(resource_path('views/vendor/paginate'));
+
+        (new Filesystem)->copyDirectory(__DIR__.'/tailwindcss-stubs/resources/views/vendor/pagination', resource_path('views/vendor/pagination'));
     }
 
     protected static function scaffoldAuth()
@@ -68,7 +89,7 @@ class TailwindCssPreset extends Preset
             FILE_APPEND
         );
 
-        (new Filesystem)->copyDirectory(__DIR__.'/tailwindcss-stubs/views', resource_path('views'));
+        (new Filesystem)->copyDirectory(__DIR__.'/tailwindcss-stubs/resources/views', resource_path('views'));
     }
 
     protected static function compileControllerStub()
